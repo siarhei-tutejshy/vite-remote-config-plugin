@@ -1,0 +1,5 @@
+export { RemoteConfig } from './plugin'
+export type { Info, Update, Options } from './types'
+export { Event } from './event'
+export { createClient } from './inject-script.helper'
+export type { WebsocketClient } from './inject-script.helper'
