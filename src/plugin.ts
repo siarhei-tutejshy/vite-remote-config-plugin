@@ -19,15 +19,21 @@ export const RemoteConfig = (options: Options = {}): Plugin => {
         enforce: 'post',
         name: 'aibuy:vite:server-remote-configure',
         apply: 'serve',
-        config(config) {
-            // get or create from previous instance
-            pluginServer = config[INTERNAL_PLUGIN_SAVE_CONTAINER_NAME] || new PluginServer(options.port);
-            return pluginServer.updateConfig(config);
+        config: {
+            handler(config) {
+                // get or create from previous instance
+                pluginServer = config[INTERNAL_PLUGIN_SAVE_CONTAINER_NAME] || new PluginServer(options.port);
+                return pluginServer.updateConfig(config);
+            },
+            order: "post",
         },
         configureServer(server) {
             pluginServer.updateViteServer(server);
             // save to next instance
             server.config.inlineConfig[INTERNAL_PLUGIN_SAVE_CONTAINER_NAME] = pluginServer;
+        },
+        configResolved(resolved) {
+            pluginServer.setConfig(resolved)
         },
         transformIndexHtml: getTransformIndexHtml(options.injectTransform, () => pluginServer),
     };

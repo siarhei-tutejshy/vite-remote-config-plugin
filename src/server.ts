@@ -1,4 +1,4 @@
-import {loadEnv, UserConfig, ViteDevServer,} from "vite";
+import {loadEnv, ResolvedConfig, UserConfig, ViteDevServer,} from "vite";
 import fg from 'fast-glob';
 import {createServer, Server, STATUS_CODES} from 'node:http'
 import {Event} from './event'
@@ -15,6 +15,7 @@ export default class PluginServer {
     private viteServer: ViteDevServer = null;
 
     private currentUpdate: Update = null;
+    private config: ResolvedConfig = null;
 
     constructor(private port: number = DEFAULT_PORT) { }
 
@@ -31,7 +32,7 @@ export default class PluginServer {
             'development',
             ...fg.globSync('.env.*', {
                 onlyFiles: true,
-                cwd: this.viteServer.config.envDir,
+                cwd: this.config.envDir,
             }).map(file => /^\.env\.(\w+)(\.local)?$/.exec(file)?.[1])
         ])
     }
@@ -57,6 +58,15 @@ export default class PluginServer {
         if (this.viteServer !== internalServer) {
             this.viteServer = internalServer;
         }
+    }
+
+    setConfig(config: ResolvedConfig) {
+        this.config = config;
+        this.listen()
+        this.sendUpdate();
+    }
+
+    listen() {
         if (!this.internalServer.listening) {
             this.internalServer.listen(this.port);
             this.createInternalWebsocket();
@@ -132,18 +142,18 @@ export default class PluginServer {
 
     private handleChangeEvent = async (data: Update)=>  {
         this.currentUpdate = data;
+        this.viteServer.config.inlineConfig.mode = data.mode;
         await this.viteServer.restart();
-        this.sendUpdate();
     }
 
     private sendUpdate = () => {
-        const config = this.viteServer.config;
+        const config = this.config;
         const variables = loadEnv(config.mode, config.envDir);
         this.send(Event.update, {
-            mode: config.mode,
+            mode: config?.mode,
             envs: this.envs,
             variables,
-            define: config.inlineConfig.define ?? {},
+            define: config?.define ?? {},
         })
     }
 
